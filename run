@@ -1,0 +1,228 @@
+#!/bin/bash
+#
+# Build pipeline for plugins on Bitbucket
+#
+
+set -eou pipefail # Exit if any command fails
+
+echo -e "\nTangible Pipeline v3\n\n..Building \"$BITBUCKET_REPO_SLUG\"\n"
+
+main() {
+
+  #
+  # Prepare environment
+  #
+
+  echo -e "\n..Installing commands\n"
+  apt update
+  apt-get install -y git ssh rsync zip nodejs
+
+  echo -e "\n..Setting up SSH"
+
+  mkdir -p ~/.ssh
+  #
+  # Support private repositories for Composer modules
+  #
+  # The environment variable TANGIBLE_PIPELINE_SSH_KEY is a private key defined
+  # by the Bitbucket account owner. The value is base64-encoded according to:
+  # https://confluence.atlassian.com/bitbucket/use-ssh-keys-in-bitbucket-pipelines-847452940.html#UseSSHkeysinBitbucketPipelines-UsemultipleSSHkeysinyourpipeline
+  #
+  # Its corresponding **public key** must be defined in each private repo's settings.
+  #
+  # - Go to the BitBucket repository for the module
+  # - From sidebar menu: Repository settings -> General: Access keys
+  # - Click "Add key"
+  #   - Label: "Tangible Pipeline"
+  #   - Key: Copy and paste the public key that corresponds to the private
+  #     SSH key which the pipeline uses to authenticate Git.
+  #
+  (umask  077 ; echo $TANGIBLE_PIPELINE_SSH_KEY | base64 --decode > ~/.ssh/id_tangible_pipeline_rsa)
+
+  # Allow SSH login without confirm prompt
+  local SHARED_SSH_CONFIG="  IdentityFile ~/.ssh/id_tangible_pipeline_rsa\n  IdentitiesOnly yes\n  StrictHostKeyChecking no\n"
+
+  echo -e "Host bitbucket.org\n$SHARED_SSH_CONFIG" > ~/.ssh/config
+
+  #
+  # Prepare project
+  #
+
+  local PROJECT_SLUG=$BITBUCKET_REPO_SLUG
+
+  # Make a copy with project name as folder
+
+  local EXCLUDE_FROM_OPTION=""
+
+  # Go to parent folder that contains the cloned repo
+  cd $BITBUCKET_CLONE_DIR/..
+
+  if [ -f "build/package.json" ]; then
+
+    # Extract project name
+
+    PROJECT_SLUG=`node -e "var pkg=require('./build/package.json');console.log((pkg.tangible && pkg.tangible.deployName) || '')"`
+
+    if [ -z "$PROJECT_SLUG" ]; then
+      PROJECT_SLUG=`node -e "console.log(require('./build/package.json').name || '')"`
+      if [ -z "$PROJECT_SLUG" ]; then
+        PROJECT_SLUG=$BITBUCKET_REPO_SLUG # Reset default, just in case
+      fi
+    fi
+
+    echo -e "\n..Using project slug \"$PROJECT_SLUG\"\n"
+  fi
+
+  if [ -f "build/.deployignore" ]; then
+    EXCLUDE_FROM_OPTION="--exclude-from=.deployignore --exclude=.deployignore"
+  fi
+
+  local command="rsync -vrlptz $EXCLUDE_FROM_OPTION --exclude=.git --exclude=node_modules --exclude=bitbucket-pipelines.yml build/ $PROJECT_SLUG"
+
+  echo $command && eval "$command"
+
+  cd $PROJECT_SLUG
+
+  # Composer
+
+  if [ -f composer.json ]; then
+
+    echo -e "\n..Installing Composer and project dependencies\n"
+
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    composer install --no-dev
+  fi
+
+  # Back to containing folder
+  cd ..
+
+  #
+  # Create zip package
+  #
+
+  local ZIP_FILE=""
+
+  # Branch variable is undefined on version tag
+  if [ -z "${BITBUCKET_BRANCH-}" ]; then
+    BITBUCKET_BRANCH=main
+  fi
+
+  echo -e "Branch: $BITBUCKET_BRANCH"
+
+  if [ -z "${BITBUCKET_TAG-}" ]; then
+
+    # Every commit
+
+    echo -e "Commit: $BITBUCKET_COMMIT"
+
+    if [ "$BITBUCKET_BRANCH" == "main" ] || [ "$BITBUCKET_BRANCH" == "master" ]; then
+      ZIP_FILE=$PROJECT_SLUG-latest.zip
+    else
+      ZIP_FILE=$PROJECT_SLUG-${BITBUCKET_BRANCH//[^0-9A-Za-z.]/-}-latest.zip
+    fi
+
+  else
+
+    # Every version tag
+
+    echo -e "Tag: $BITBUCKET_TAG"
+
+    ZIP_FILE=$PROJECT_SLUG-$BITBUCKET_TAG.zip
+  fi
+
+  echo -e "\n..Creating zip file: $ZIP_FILE\n"
+
+  zip -r $ZIP_FILE $PROJECT_SLUG -x "**/*node_modules*" "**/.git*" "**/_*" "*pipelines.yml" "**/.gitignore" "**/composer.json" "**/composer.lock" "**/*.sass-cache*" "**/.babelrc" "**/.editorconfig" "**/gitlib.config*" "**/package-lock.json" "**/README.md" "**/readme.md" "**/vendor/tangible/builder*" "**/docs-dev/**"
+
+  echo -e "\nCreated $ZIP_FILE"
+
+  #
+  # Deploy
+  #
+
+  local DEPLOY_USER=ubuntu
+  local DEPLOY_HOST=167.99.13.88
+  local UPDATE_SERVER_DOMAIN=updater.tangible.one
+
+  echo -e "\n..Deploying to Downloads in Bitbucket repository\n"
+
+  curl -X POST "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/${BITBUCKET_REPO_OWNER}/${BITBUCKET_REPO_SLUG}/downloads" --form files=@"$ZIP_FILE"
+
+  echo -e "See https://bitbucket.org/tangibleinc/${BITBUCKET_REPO_SLUG}/downloads"
+
+  # Only the main branch is deployed to cloud server
+
+  if [ "$BITBUCKET_BRANCH" != "main" ] && [ "$BITBUCKET_BRANCH" != "master" ]; then
+    return
+  fi
+
+  echo -e "\n..Deploying to Update Server\n"
+
+  # Go to parent folder that contains the cloned repo
+  # Deploy copy is in folder $PROJECT_SLUG
+  cd $BITBUCKET_CLONE_DIR/..
+
+  # Sanity check for rsync target path
+  if [ -z "$PROJECT_SLUG" ]; then
+    echo "Repository slug empty"
+    exit 1
+  fi
+  if [ ! -d "$PROJECT_SLUG" ]; then
+    echo "Folder does not exist: $PROJECT_SLUG"
+    exit 1
+  fi
+
+  echo -e "Host $DEPLOY_HOST\n$SHARED_SSH_CONFIG" >> ~/.ssh/config
+
+  local DEPLOY_TYPE=plugins
+
+  # Detect themes
+  if [ -f "$PROJECT_SLUG/style.css" ]; then
+    DEPLOY_TYPE=themes
+  fi
+
+  if [ -f "$PROJECT_SLUG/package.json" ]; then
+    # Detect deploy type from package.json, if any
+    local _DEPLOY_TYPE=`node -e "var pkg=require('./$PROJECT_SLUG/package.json');console.log((pkg.tangible && pkg.tangible.deployType) || '')"`
+    if [ ! -z "$_DEPLOY_TYPE" ]; then
+      DEPLOY_TYPE=${_DEPLOY_TYPE}s # modules, tools, ..
+    fi
+  fi
+
+  # Deploy path: ~/lib/plugins/plugin-name
+
+  local DEPLOY_ROOT_PATH=/home/$DEPLOY_USER/lib
+  local DEPLOY_LIB_RELATIVE_PATH=$DEPLOY_TYPE/$PROJECT_SLUG
+  local DEPLOY_FULL_PATH=$DEPLOY_ROOT_PATH/$DEPLOY_LIB_RELATIVE_PATH
+
+  # Create and sync folder structure first, in case target doesn't exist on remote
+  # https://stackoverflow.com/questions/45122323/rsync-command-is-giving-error-no-such-file-or-directory-2#answer-47575240
+  mkdir -p lib/$DEPLOY_LIB_RELATIVE_PATH
+  command="rsync -vrltz lib/ ${DEPLOY_USER}@${DEPLOY_HOST}:$DEPLOY_ROOT_PATH"
+  echo $command && eval "$command"
+
+  # Include metadata in the folder
+  #cat $DEPLOY_META_FILE > $PROJECT_SLUG/deploy-meta.json
+
+  command="rsync -vrltz --delete --exclude=.git --exclude=node_modules --exclude=bitbucket-pipelines.yml $PROJECT_SLUG/ ${DEPLOY_USER}@${DEPLOY_HOST}:$DEPLOY_FULL_PATH"
+
+  echo $command && eval "$command"
+
+  if [ ! -z "${BITBUCKET_TAG-}" ]; then
+
+    echo -e "\nOn version tag - Deploy zip package to update server\n"
+
+    if [ ! -f "$ZIP_FILE" ]; then
+      echo "Zip package not found: $ZIP_FILE"
+      ls -lA
+      return
+    fi
+
+    # Target path on update server
+
+    command="scp $ZIP_FILE ${DEPLOY_USER}@${DEPLOY_HOST}:apps/${UPDATE_SERVER_DOMAIN}/packages/${PROJECT_SLUG}.zip"
+    echo $command && eval "$command"
+  fi
+
+}
+
+main
