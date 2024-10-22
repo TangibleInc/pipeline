@@ -2,7 +2,7 @@
 export async function getEventMeta() {
 
   const {
-    GITHUB_REPOSITORY: repoFullName, // tangible/example-plugin
+    GITHUB_REPOSITORY: repoFullName, // tangibleinc/example-plugin
     GITHUB_REF_TYPE: eventType, // branch or tag
     /**
      * refs/heads/<branch_name>

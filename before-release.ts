@@ -62,16 +62,30 @@ async function main() {
   let commitLogs
   try {
     const previousTag =
-      await $`git describe --tags --match "*.*.*" --abbrev=0`.text()
+      await $`git describe --tags --match "*.*.*" --abbrev=0 ${
+        eventType === 'tag' ? '@^' : ''
+      }`.text()
 
     if (!previousTag) {
       console.log('No previous version tag found')
     } else {
+      console.log('Since previous tag', previousTag)
       commitLogs =
-        await $`git log ${previousTag}..HEAD --oneline --no-merges`.text()
+        await $`git log ${previousTag}..HEAD --oneline --no-merges --pretty="%h %s"`.text()
     }
   } catch (e) {
     console.log(e.message)
+  }
+
+  if (commitLogs) {
+    commitLogs = commitLogs
+      .split('\n')
+      .filter(Boolean)
+      .map((s) => {
+        const commit = s.split(' ').shift()
+        return `- [${s}](https://github.com/${repoFullName}/commit/${commit})`
+      })
+      .join('\n')
   }
 
   // Tag
