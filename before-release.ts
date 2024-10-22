@@ -66,9 +66,9 @@ async function main() {
   let commitLogs
   try {
     let previousTag =
-      await $`git describe --tags --always --match "*.*.*" --abbrev=0 ${
+      (await $`git describe --tags --always --match "*.*.*" --abbrev=0 ${
         eventType === 'tag' ? '@^' : ''
-      }`.text()
+      }`.text()).trim()
 
     if (!previousTag) {
       console.log('No previous version tag found')
