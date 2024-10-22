@@ -75,7 +75,10 @@ async function main() {
     } else {
       console.log('Since previous tag', previousTag)
       commitLogs =
-        await $`git log ${previousTag}..HEAD --oneline --no-merges --pretty="%h %s"`.text()
+        await $`git log ${
+          // Pass as single argument
+          `${previousTag}..HEAD`
+        } --oneline --no-merges --pretty="%h %s"`.text()
     }
   } catch (e) {
     console.log(e.message)
