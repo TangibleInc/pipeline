@@ -73,8 +73,8 @@ async function main() {
     let previousTag
     const result =
       eventType === 'tag'
-        ? await $`git describe --tags --match "*.*.*" --abbrev=0 @^`
-        : await $`git describe --tags --match "*.*.*" --abbrev=0`
+        ? await $`git describe --tags --always --match "*.*.*" --abbrev=0 @^`
+        : await $`git describe --tags --always --match "*.*.*" --abbrev=0`
 
     if (result.stderr) {
       console.error(result.stderr)

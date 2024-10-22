@@ -69,7 +69,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - run: git fetch --tags origin
+        with:
+          fetch-depth: 0
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
       - name: Install dependencies
