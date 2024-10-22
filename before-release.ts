@@ -65,22 +65,10 @@ async function main() {
   console.log('Gather commit messages since last version tag')
   let commitLogs
   try {
-    // const previousTag =
-    //   await $`git describe --tags --match "*.*.*" --abbrev=0 ${
-    //     eventType === 'tag' ? '@^' : ''
-    //   }`.text()
-
-    let previousTag
-    const result =
-      eventType === 'tag'
-        ? await $`git describe --tags --always --match "*.*.*" --abbrev=0 @^`
-        : await $`git describe --tags --always --match "*.*.*" --abbrev=0`
-
-    if (result.stderr) {
-      console.error(result.stderr)
-    } else {
-      previousTag = result.stdout
-    }
+    const previousTag =
+      await $`git describe --tags --always --match "*.*.*" --abbrev=0 ${
+        eventType === 'tag' ? '@^' : ''
+      }`.text()
 
     if (!previousTag) {
       console.log('No previous version tag found')
