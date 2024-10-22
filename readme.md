@@ -35,21 +35,21 @@ pipelines:
   default:
     - step:
         script:
-          - curl -sL "https://raw.githubusercontent.com/tangibleinc/pipeline/main/run" | bash
+          - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
   # On every version tag
   tags:
     "*":
       - step:
           script:
-            - curl -sL "https://raw.githubusercontent.com/tangibleinc/pipeline/main/run" | bash
+            - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
 ```
 
-### Existing projects
+For existing projects, change `v2` to `v3` in the URL of the Bitbucket pipeline script.
 
-For gradual upgrade, change `v2` to `v3` in the URL of the Bitbucket pipeline script.
+Alternatively use the GitHub URL.
 
-```sh
-curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
+```
+https://raw.githubusercontent.com/tangibleinc/pipeline/main/run
 ```
 
 ## GitHub Actions
@@ -76,10 +76,9 @@ jobs:
       - name: Create archive
         run: bun run archive -y
       - name: Install pipeline
-        run: git clone https://tangibleinc/pipeline
+        run: mkdir -p publish && cd publish && git clone https://github.com/tangibleinc/pipeline
       - name: Before release script
-        # run: bun run .github/workflows/before-release.ts
-        run: bun run node_modules/@tangible/pipeline/before-release.ts
+        run: bun run publish/pipeline/before-release.ts
       - name: Release tag
         uses: softprops/action-gh-release@v2
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -98,8 +97,7 @@ jobs:
           tag_name: latest
           make_latest: true
       - name: After release script
-        # run: bun run .github/workflows/after-release.ts
-        run: bun run node_modules/@tangible/pipeline/after-release.ts
+        run: bun run publish/pipeline/after-release.ts
 ```
 
 ### Actions reference
