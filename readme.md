@@ -2,24 +2,26 @@
 
 Shared build pipeline for plugins on GitHub and Bitbucket.
 
+Source code: https://github.com/tangibleinc/pipeline
+
 ## Features
 
 The goal is to seamlessly upgrade from the previous [Bitbucket Pipeline v2](https://bitbucket.org/tangibleinc/tangible-pipeline-v2/) to GitHub Actions.
 
-- [ ] Create zip archive
-  - [ ] `{plugin}-latest.zip` on Git commit - branch `main` or `master`
-  - [ ] `{plugin}-{branch}-latest.zip` on Git commit - other branches
-  - [ ] `{plugin}-{version}.zip` on Git version tag
+- [x] Create zip archive
+  - [x] `{plugin}-latest.zip` on Git commit - branch `main` or `master`
+  - [x] `{plugin}-{branch}-latest.zip` on Git commit - other branches
+  - [x] `{plugin}-{version}.zip` on Git version tag
 
-- [ ] Copy zip file to release on project page
-  - [ ] `Releases` folder on GitHub
-  - [ ] `Downloads` folder on BitBucket
+- [x] Copy zip file to release on project page
+  - [x] `Releases` folder on GitHub
+  - [x] `Downloads` folder on BitBucket
 
-- [ ] Copy zip file to update server
-  - [ ] On version release, publish to updater
+- [x] Copy zip file to update server
+  - [x] On version release, publish to updater
   - [ ] On every commit, publish preview release with plugin name suffix `-preview`
 
-- Send message to a central API for logging the event
+- [x] Deploy metadata to an event API
 
 ## Bitbucket Pipeline
 
@@ -42,24 +44,70 @@ pipelines:
             - curl -sL "https://raw.githubusercontent.com/tangibleinc/pipeline/main/run" | bash
 ```
 
+### Existing projects
+
+For gradual upgrade, change `v2` to `v3` in the URL of the Bitbucket pipeline script.
+
+```sh
+curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
+```
+
 ## GitHub Actions
+
+Status: Work in progress
 
 Create a file at `.github/workflows/release.yml`.
 
 ```yml
 name: Release
 permissions:
-  contents: read
+  contents: write
 on: push
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install github:tangibleinc/pipeline
-      - run: bun run node_modules/@tangible/pipeline/index.ts
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install
+      - name: Create archive
+        run: bun run archive -y
+      - name: Install pipeline
+        run: git clone https://tangibleinc/pipeline
+      - name: Before release script
+        # run: bun run .github/workflows/before-release.ts
+        run: bun run node_modules/@tangible/pipeline/before-release.ts
+      - name: Release tag
+        uses: softprops/action-gh-release@v2
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          body_path: publish/release.md
+          files: publish/*.zip
+      - name: Add latest tag as needed
+        uses: EndBug/latest-tag@latest
+        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+      - name: Release preview at latest commit
+        uses: softprops/action-gh-release@v2
+        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+        with:
+          body_path: publish/release.md
+          files: publish/*.zip
+          tag_name: latest
+          make_latest: true
+      - name: After release script
+        # run: bun run .github/workflows/after-release.ts
+        run: bun run node_modules/@tangible/pipeline/after-release.ts
 ```
+
+### Actions reference
+
+- [GitHub default environment variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables)
+- [Add latest tag as needed](https://github.com/marketplace/actions/latest-tag)
+- [Create release](https://github.com/softprops/action-gh-release)
+  - [Uploading release assets](https://github.com/softprops/action-gh-release?tab=readme-ov-file#%EF%B8%8F-uploading-release-assets)
 
 ### Private repositories
 

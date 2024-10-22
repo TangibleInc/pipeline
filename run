@@ -15,7 +15,7 @@ main() {
 
   echo -e "\n..Installing commands\n"
   apt update
-  apt-get install -y git ssh rsync zip nodejs
+  apt-get install -y git ssh rsync zip nodejs npm
 
   echo -e "\n..Setting up SSH"
 
@@ -69,7 +69,11 @@ main() {
       fi
     fi
 
+    # Clean up slug: alphanumeric and dash only
+    PROJECT_SLUG=${PROJECT_SLUG//[^0-9A-Za-z\-]/-}
+
     echo -e "\n..Using project slug \"$PROJECT_SLUG\"\n"
+
   fi
 
   if [ -f "build/.deployignore" ]; then
@@ -90,6 +94,24 @@ main() {
 
     curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
     composer install --no-dev
+  fi
+
+  local ZIP_FILE_CREATED
+  local ARCHIVE_FOLDER_NAME=$PROJECT_SLUG
+  local HAS_ARCHIVE
+
+  if [ -f package.json ]; then
+
+    echo -e "\n..Installing NPM dependencies\n"
+    npm install
+
+    HAS_ARCHIVE=$(node -e "const pkg = require('./package.json'); console.log((pkg && pkg.scripts && pkg.scripts.archive) || '')")
+
+    if [ ! -z "$HAS_ARCHIVE" ]; then
+      echo -e "\n..Creating zip archive: $ARCHIVE_FOLDER_NAME \n"
+      npx roll archive -y
+      ZIP_FILE_CREATED=$(pwd)/publish/${ARCHIVE_FOLDER_NAME}.zip
+    fi
   fi
 
   # Back to containing folder
@@ -129,11 +151,21 @@ main() {
     ZIP_FILE=$PROJECT_SLUG-$BITBUCKET_TAG.zip
   fi
 
-  echo -e "\n..Creating zip file: $ZIP_FILE\n"
+  if [ ! -z $ZIP_FILE_CREATED ]; then
 
-  zip -r $ZIP_FILE $PROJECT_SLUG -x "**/*node_modules*" "**/.git*" "**/_*" "*pipelines.yml" "**/.gitignore" "**/composer.json" "**/composer.lock" "**/*.sass-cache*" "**/.babelrc" "**/.editorconfig" "**/gitlib.config*" "**/package-lock.json" "**/README.md" "**/readme.md" "**/vendor/tangible/builder*" "**/docs-dev/**"
+    echo -e "\n..Rename zip archive\nSource: $ZIP_FILE_CREATED\nTarget: $ZIP_FILE\n"
 
-  echo -e "\nCreated $ZIP_FILE"
+    mv "$ZIP_FILE_CREATED" "$ZIP_FILE"
+
+  else
+
+    echo -e "\n..Creating zip file: $ZIP_FILE\n"
+
+    zip -r $ZIP_FILE $PROJECT_SLUG -x "**/*node_modules*" "**/.git*" "**/_*" "*pipelines.yml" "**/.gitignore" "**/composer.json" "**/composer.lock" "**/*.sass-cache*" "**/.babelrc" "**/.editorconfig" "**/gitlib.config*" "**/package-lock.json" "**/README.md" "**/readme.md" "**/vendor/tangible/builder*" "**/docs-dev/**"
+
+    echo -e "\nCreated $ZIP_FILE"
+
+  fi
 
   #
   # Deploy
@@ -200,10 +232,7 @@ main() {
   command="rsync -vrltz lib/ ${DEPLOY_USER}@${DEPLOY_HOST}:$DEPLOY_ROOT_PATH"
   echo $command && eval "$command"
 
-  # Include metadata in the folder
-  #cat $DEPLOY_META_FILE > $PROJECT_SLUG/deploy-meta.json
-
-  command="rsync -vrltz --delete --exclude=.git --exclude=node_modules --exclude=bitbucket-pipelines.yml $PROJECT_SLUG/ ${DEPLOY_USER}@${DEPLOY_HOST}:$DEPLOY_FULL_PATH"
+  command="rsync -vrltz --delete --exclude=publish --exclude=node_modules --exclude=bitbucket-pipelines.yml $PROJECT_SLUG/ ${DEPLOY_USER}@${DEPLOY_HOST}:$DEPLOY_FULL_PATH"
 
   echo $command && eval "$command"
 
@@ -222,6 +251,40 @@ main() {
     command="scp $ZIP_FILE ${DEPLOY_USER}@${DEPLOY_HOST}:apps/${UPDATE_SERVER_DOMAIN}/packages/${PROJECT_SLUG}.zip"
     echo $command && eval "$command"
   fi
+
+
+  # Deploy metadata
+
+  echo -e "\nDeploy metadata\n"
+
+  local DEPLOY_META_FILE=deploy-meta.json
+  # Timestamp in UTC
+  local DEPLOY_TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S")
+
+  local EVENT_KEY
+  local EVENT_VALUE
+
+  if [ ! -z "${BITBUCKET_TAG-}" ]; then
+    EVENT_KEY=tag
+    EVENT_VALUE=$BITBUCKET_TAG
+  else
+    EVENT_KEY=commit
+    EVENT_VALUE=$BITBUCKET_BRANCH
+  fi
+
+  local SOURCE_URL=https://bitbucket.org/tangibleinc/"$BITBUCKET_REPO_SLUG"
+  local TARGET_URL=https://log.tangible.one
+
+  printf '{ "type": "git", "source": "%s", "time": "%s", "%s": "%s" }' "$SOURCE_URL" "$DEPLOY_TIMESTAMP" "$EVENT_KEY" "$EVENT_VALUE" > $DEPLOY_META_FILE
+
+  echo -e "\nPost event to $TARGET_URL\n"
+
+  cat $DEPLOY_META_FILE
+  echo
+
+  curl --header "Content-Type: application/json" --request POST --data "@$DEPLOY_META_FILE" $TARGET_URL || true
+
+  echo -e "\nAll done"
 
 }
 
