@@ -1,3 +1,4 @@
+import { $ } from 'bun'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import { getEventMeta } from './common'
@@ -19,18 +20,13 @@ async function main() {
    * [GitHub default environment variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables)
    */
 
-  const {
-    repoFullName,
-    eventType,
-    gitRef,
-    gitRefName
-  } = await getEventMeta()
+  const { repoFullName, eventType, gitRef, gitRefName } = await getEventMeta()
 
   console.log('Repository', repoFullName)
   console.log('Event type', eventType)
   console.log('Git ref', gitRef)
 
-  if (!await fs.exists(configPath)) {
+  if (!(await fs.exists(configPath))) {
     console.log('Config file not found', configPath)
     console.log('Skip zip archive release')
     return
@@ -58,18 +54,35 @@ async function main() {
     await fs.writeFile(releaseTextPath, text)
   }
 
+  /**
+   * List commit messages since last version tag
+   */
+
+  console.log('Gather commit messages since last version tag')
+  let commitLogs
+  try {
+    const previousTag =
+      await $`git describe --tags --match "*.*.*" --abbrev=0`.text()
+
+    if (!previousTag) {
+      console.log('No previous version tag found')
+    } else {
+      commitLogs =
+        await $`git log ${previousTag}..HEAD --oneline --no-merges`.text()
+    }
+  } catch (e) {
+    console.log(e.message)
+  }
+
   // Tag
 
   if (eventType === 'tag') {
     const tag = gitRefName
     console.log('Release on tag', tag)
 
-    /**
-     * TODO: List commit messages since last version tag, or
-     * get it from changelog.md
-     */
-
-    await writeRelease(`# ${tag}`)
+    if (commitLogs) {
+      await writeRelease(commitLogs)
+    }
 
     // `{plugin}-{version}.zip`
 
@@ -88,7 +101,9 @@ async function main() {
   if (branch === 'main' || branch === 'master') {
     console.log('Release preview on main/master branch')
 
-    await writeRelease(`# Release preview`)
+    await writeRelease(
+      `# Release preview${commitLogs ? `\n\n${commitLogs}` : ''}`,
+    )
 
     // `{plugin}-latest.zip`
 
@@ -106,7 +121,9 @@ async function main() {
 
   // `{plugin}-{branch}-latest.zip`
 
-  await writeRelease(`# Branch preview ${branch}`)
+  await writeRelease(
+    `# Branch preview ${branch}${commitLogs ? `\n\n${commitLogs}` : ''}`,
+  )
 
   const targetZipPath = sourceZipPath.replace(
     '.zip',

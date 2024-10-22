@@ -277,7 +277,7 @@ main() {
 
   printf '{ "type": "git", "source": "%s", "time": "%s", "%s": "%s" }' "$SOURCE_URL" "$DEPLOY_TIMESTAMP" "$EVENT_KEY" "$EVENT_VALUE" > $DEPLOY_META_FILE
 
-  echo -e "\nPost event to $TARGET_URL\n"
+  echo -e "Post event to $TARGET_URL\n"
 
   cat $DEPLOY_META_FILE
   echo
