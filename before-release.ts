@@ -15,6 +15,7 @@ async function main() {
   const projectPath = process.cwd()
   const publishPath = path.join(projectPath, 'publish')
   const configPath = path.join(projectPath, 'tangible.config.js')
+  const releaseTextPath = path.join(publishPath, `release.md`)
 
   /**
    * [GitHub default environment variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables)
@@ -46,25 +47,40 @@ async function main() {
 
   console.log('Source zip file', sourceZipPath)
 
-  const releaseTextPath = path.join(publishPath, `release.md`)
-
   async function writeRelease(text: string) {
     console.log('Write release text', releaseTextPath)
     console.log(text)
     await fs.writeFile(releaseTextPath, text)
   }
 
+  // Ensure file exists for next step
+  await fs.writeFile(releaseTextPath, '')
+
   /**
    * List commit messages since last version tag
    */
 
+  $.cwd(projectPath)
+
   console.log('Gather commit messages since last version tag')
   let commitLogs
   try {
-    const previousTag =
-      await $`git describe --tags --match "*.*.*" --abbrev=0 ${
-        eventType === 'tag' ? '@^' : ''
-      }`.text()
+    // const previousTag =
+    //   await $`git describe --tags --match "*.*.*" --abbrev=0 ${
+    //     eventType === 'tag' ? '@^' : ''
+    //   }`.text()
+
+    let previousTag
+    const result =
+      eventType === 'tag'
+        ? await $`git describe --tags --match "*.*.*" --abbrev=0 @^`
+        : await $`git describe --tags --match "*.*.*" --abbrev=0`
+
+    if (result.stderr) {
+      console.error(result.stderr)
+    } else {
+      previousTag = result.stdout
+    }
 
     if (!previousTag) {
       console.log('No previous version tag found')
@@ -77,6 +93,7 @@ async function main() {
     console.log(e.message)
   }
 
+  // Format commits into Markdown list with link
   if (commitLogs) {
     commitLogs = commitLogs
       .split('\n')
@@ -94,9 +111,9 @@ async function main() {
     const tag = gitRefName
     console.log('Release on tag', tag)
 
-    if (commitLogs) {
-      await writeRelease(commitLogs)
-    }
+    await writeRelease(
+      `# Release tag ${tag}${commitLogs ? `\n\n${commitLogs}` : ''}`,
+    )
 
     // `{plugin}-{version}.zip`
 
