@@ -79,6 +79,9 @@ jobs:
         run: bun run archive -y
       - name: Install pipeline
         run: mkdir -p publish && cd publish && git clone https://github.com/tangibleinc/pipeline
+      - name: Add latest tag as needed
+        uses: EndBug/latest-tag@latest
+        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
       - name: Before release script
         run: bun run publish/pipeline/before-release.ts
       - name: Release tag
@@ -87,9 +90,6 @@ jobs:
         with:
           body_path: publish/release.md
           files: publish/*.zip
-      - name: Add latest tag as needed
-        uses: EndBug/latest-tag@latest
-        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
       - name: Release preview at latest commit
         uses: softprops/action-gh-release@v2
         if: ${{ ! startsWith(github.ref, 'refs/tags/') }}

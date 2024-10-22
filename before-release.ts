@@ -65,21 +65,21 @@ async function main() {
   console.log('Gather commit messages since last version tag')
   let commitLogs
   try {
-    let previousTag =
-      (await $`git describe --tags --always --match "*.*.*" --abbrev=0 ${
+    let previousTag = (
+      await $`git describe --tags --always --match "*.*.*" --abbrev=0 ${
         eventType === 'tag' ? '@^' : ''
-      }`.text()).trim()
+      }`.text()
+    ).trim()
 
     if (!previousTag) {
       console.log('No previous version tag found')
     } else {
       console.log('Since previous tag', previousTag)
-      const result =
-        await $`git log ${
-          // Pass as single argument
-          `${previousTag}..HEAD`
-        } --oneline --no-merges --pretty="%h %s"`.nothrow() //.text()
-      if (result.exitCode !== 0){
+      const result = await $`git log ${
+        // Pass as single argument
+        `${previousTag}..HEAD`
+      } --oneline --no-merges --pretty="%h %s"`.nothrow() //.text()
+      if (result.exitCode !== 0) {
         console.log(result.stderr.toString())
       } else {
         commitLogs = result.stdout.toString()
@@ -95,8 +95,8 @@ async function main() {
       .split('\n')
       .filter(Boolean)
       .map((s) => {
-        const commit = s.split(' ').shift()
-        return `- [${s}](https://github.com/${repoFullName}/commit/${commit})`
+        const [commit, ...parts] = s.split(' ')
+        return `- [${commit}](https://github.com/${repoFullName}/commit/${commit}) ${parts.join(' ')}`
       })
       .join('\n')
   }
