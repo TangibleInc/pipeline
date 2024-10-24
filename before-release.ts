@@ -154,7 +154,7 @@ async function main() {
 
   const targetZipPath = sourceZipPath.replace(
     '.zip',
-    `-${slugify(branch)}-latest.zip`,
+    `-${slugify(branch.replace(/\//g, '-'))}-latest.zip`,
   )
 
   console.log('Target zip file', targetZipPath)
