@@ -35,7 +35,7 @@ async function main() {
 
   console.log('Wrote', deployMetaPath)
 
-  const deployEventUrl = `https://log.tangible.one`
+  const deployEventUrl = `https://api.tangible.one`
   const response = await fetch(deployEventUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

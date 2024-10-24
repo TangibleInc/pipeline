@@ -7,7 +7,7 @@ import { getEventMeta } from './common'
  * Prepare release
  *
  * - Rename zip file based on version tag or branch name
- * - TODO: Create release notes from commit messages
+ * - Create release notes from commit messages
  */
 async function main() {
   console.log('Prepare release')

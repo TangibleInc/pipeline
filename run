@@ -273,7 +273,7 @@ main() {
   fi
 
   local SOURCE_URL=https://bitbucket.org/tangibleinc/"$BITBUCKET_REPO_SLUG"
-  local TARGET_URL=https://log.tangible.one
+  local TARGET_URL=https://api.tangible.one
 
   printf '{ "type": "git", "source": "%s", "time": "%s", "%s": "%s" }' "$SOURCE_URL" "$DEPLOY_TIMESTAMP" "$EVENT_KEY" "$EVENT_VALUE" > $DEPLOY_META_FILE
 
