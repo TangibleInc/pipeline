@@ -18,9 +18,10 @@ The goal is to seamlessly upgrade from the previous [Bitbucket Pipeline v2](http
   - [x] `Downloads` folder on BitBucket
 
 - [x] Copy zip file to update server
-  - [x] On version release, publish to updater
-  - [ ] On every commit, publish preview release with plugin name suffix `-preview`
+  - [x] On version release, publish to update server
+  - [x] On every commit, publish preview release with optional branch suffix
 
+- [x] Create change log from Git commit messages
 - [x] Deploy metadata to an event API
 
 ## Bitbucket Pipeline

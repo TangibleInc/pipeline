@@ -21,6 +21,7 @@ async function main() {
 
   const data = {
     type: 'git',
+    event: eventType === 'branch' ? 'commit' : eventType,
     source: `https://github.com/${repoFullName}`,
     time: new Date().toISOString().slice(0, 19).replace('T', ' '),
   }
@@ -36,17 +37,21 @@ async function main() {
   console.log('Wrote', deployMetaPath)
 
   const deployEventUrl = `https://api.tangible.one`
-  const response = await fetch(deployEventUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
 
-  console.log('Response', response.status, response.statusText)
+  try {
+    const response = await fetch(deployEventUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
 
-  const body = await response.text()
+    console.log('Response', response.status, response.statusText)
 
-  console.log(body)
+    const body = await response.text()
+    console.log(body)
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 main()
