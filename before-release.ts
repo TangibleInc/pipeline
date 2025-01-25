@@ -37,6 +37,12 @@ async function main() {
 
   const config = (await import(configPath)).default
 
+  if (!config.archive) {
+    console.log('No archive config found for creating a zip file')
+    console.log('Skipping..')
+    return
+  }
+
   const zipFileName = `${config.archive.root}.zip`
   const sourceZipPath = path.join(publishPath, zipFileName)
 
