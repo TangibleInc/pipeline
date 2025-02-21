@@ -1,6 +1,4 @@
-
 export async function getEventMeta() {
-
   const {
     GITHUB_REPOSITORY: repoFullName, // tangibleinc/example-plugin
     GITHUB_REF_TYPE: eventType, // branch or tag
@@ -20,4 +18,6 @@ export async function getEventMeta() {
     gitRef,
     gitRefName,
   }
-} 
+}
+
+export const isTestEnvironment = process.env.NODE_ENV === 'test'

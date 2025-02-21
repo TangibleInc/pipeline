@@ -1,42 +1,67 @@
+import { Glob } from 'bun'
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import { getEventMeta } from './common'
+import { getEventMeta, isTestEnvironment } from './common'
 /**
  * After release
  *
  * - Deploy metadata
  */
-async function main() {
+export async function afterRelease() {
   console.log('After release')
 
   const projectPath = process.cwd()
   const deployMetaPath = path.join(projectPath, 'deploy-meta.json')
 
   const {
-    repoFullName,
+    repoFullName = '',
     eventType = 'unknown',
     gitRef,
     gitRefName,
   } = await getEventMeta()
 
+  const isCommit = eventType === 'branch'
+  const isTag = eventType === 'tag'
+
+  // const [orgName, repoName] = repoFullName.split('/')
+  const repoUrl = `https://github.com/${repoFullName}`
   const data = {
     type: 'git',
-    event: eventType === 'branch' ? 'commit' : eventType,
-    source: `https://github.com/${repoFullName}`,
+    event: isCommit ? 'commit' : eventType,
+    source: repoUrl,
     time: new Date().toISOString().slice(0, 19).replace('T', ' '),
   }
 
   // branch or tag
   data[eventType] = gitRefName
 
-  console.log(data)
-  console.log()
+  // Find zip archive file name
+  const zipPattern = isTag ? `*-${gitRefName}.zip` : `*latest.zip`
+  const glob = new Glob(zipPattern)
+
+  const publishPath = './publish'
+  const file =
+    (await fs.exists(publishPath)) &&
+    (await Array.fromAsync(glob.scan({ cwd: publishPath }))).pop()
+  if (file) {
+    data.file = file
+    data.fileDownload = `${repoUrl}/releases/download/${
+      isTag ? gitRefName : 'latest'
+    }/${file}`
+  }
+
+  if (!isTestEnvironment) {
+    console.log(data)
+    console.log()
+  }
 
   await fs.writeFile(deployMetaPath, JSON.stringify(data, null, 2), 'utf8')
 
   console.log('Wrote', deployMetaPath)
 
-  const deployEventUrl = `https://api.tangible.one`
+  const deployEventUrl = isTestEnvironment
+    ? `http://localhost:3333`
+    : `https://api.tangible.one`
 
   try {
     const response = await fetch(deployEventUrl, {
@@ -54,4 +79,7 @@ async function main() {
   }
 }
 
-main()
+// Run automatically when used in pipeline script
+if (!isTestEnvironment) {
+  await afterRelease()
+}

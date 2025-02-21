@@ -1,4 +1,11 @@
 {
   "name": "@tangible/pipeline",
-  "version": "3.0.0"
+  "version": "3.0.0",
+  "scripts": {
+    "test": "NODE_ENV=test bun tests/index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "testra": "^2.1.4"
+  }
 }

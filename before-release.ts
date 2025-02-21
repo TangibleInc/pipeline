@@ -1,7 +1,7 @@
 import { $ } from 'bun'
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import { getEventMeta } from './common'
+import { getEventMeta, isTestEnvironment } from './common'
 
 /**
  * Prepare release
@@ -9,7 +9,7 @@ import { getEventMeta } from './common'
  * - Rename zip file based on version tag or branch name
  * - Create release notes from commit messages
  */
-async function main() {
+export async function beforeRelease() {
   console.log('Prepare release')
 
   const projectPath = process.cwd()
@@ -43,7 +43,9 @@ async function main() {
     return
   }
 
-  const zipFileName = `${config.archive.root}.zip`
+  const zipFileName = config.archive.root
+    ? `${config.archive.root}.zip`
+    : config.archive.dest
   const sourceZipPath = path.join(publishPath, zipFileName)
 
   if (!(await fs.exists(sourceZipPath))) {
@@ -178,4 +180,7 @@ function slugify(str: string) {
     .replace(/-+/g, '-') // remove consecutive hyphens
 }
 
-main()
+// Run automatically when used in pipeline script
+if (!isTestEnvironment) {
+  await beforeRelease()
+}
