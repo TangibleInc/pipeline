@@ -1,7 +1,7 @@
 import { $ } from 'bun'
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import { getEventMeta, isTestEnvironment } from './common'
+import { getEventMeta, isTestEnvironment, getProjectConfig } from './common'
 
 /**
  * Prepare release
@@ -12,36 +12,25 @@ import { getEventMeta, isTestEnvironment } from './common'
 export async function beforeRelease() {
   console.log('Prepare release')
 
-  const projectPath = process.cwd()
-  const publishPath = path.join(projectPath, 'publish')
-  const configPath = path.join(projectPath, 'tangible.config.js')
-  const releaseTextPath = path.join(publishPath, `release.md`)
-
-  /**
-   * [GitHub default environment variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables)
-   */
-
   const { repoFullName, eventType, gitRef, gitRefName } = await getEventMeta()
 
   console.log('Repository', repoFullName)
   console.log('Event type', eventType)
   console.log('Git ref', gitRef)
 
-  if (!(await fs.exists(configPath))) {
-    console.log('Config file not found', configPath)
-    console.log('Skip zip archive release')
+  const projectPath = process.cwd()
+  const publishPath = path.join(projectPath, 'publish')
+  const releaseTextPath = path.join(publishPath, `release.md`)
+
+  const config = await getProjectConfig({ projectPath })
+
+  if (!config || !config.archive) {
+    console.log('No config found for creating a zip archive')
+    console.log('Skipping..')
     return
   }
 
   // Source zip file
-
-  const config = (await import(configPath)).default
-
-  if (!config.archive) {
-    console.log('No archive config found for creating a zip file')
-    console.log('Skipping..')
-    return
-  }
 
   const zipFileName = config.archive.root
     ? `${config.archive.root}.zip`

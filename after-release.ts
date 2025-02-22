@@ -1,7 +1,7 @@
 import { Glob } from 'bun'
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import { getEventMeta, isTestEnvironment } from './common'
+import { getEventMeta, isTestEnvironment, getProjectConfig } from './common'
 /**
  * After release
  *
@@ -12,6 +12,7 @@ export async function afterRelease() {
 
   const projectPath = process.cwd()
   const deployMetaPath = path.join(projectPath, 'deploy-meta.json')
+  const config = (await getProjectConfig({ projectPath })) || {}
 
   const {
     repoFullName = '',
@@ -23,8 +24,9 @@ export async function afterRelease() {
   const isCommit = eventType === 'branch'
   const isTag = eventType === 'tag'
 
-  // const [orgName, repoName] = repoFullName.split('/')
+  const [orgName, repoName] = repoFullName.split('/')
   const repoUrl = `https://github.com/${repoFullName}`
+
   const data = {
     type: 'git',
     event: isCommit ? 'commit' : eventType,
@@ -48,6 +50,11 @@ export async function afterRelease() {
     data.fileDownload = `${repoUrl}/releases/download/${
       isTag ? gitRefName : 'latest'
     }/${file}`
+  }
+
+  if (config.archive) {
+    data.archiveName = config.archive.root || repoName
+    data.archiveFile = config.archive.dest || `${repoName}.zip`
   }
 
   if (!isTestEnvironment) {
