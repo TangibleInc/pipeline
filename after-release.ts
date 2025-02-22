@@ -54,7 +54,9 @@ export async function afterRelease() {
 
   if (config.archive) {
     data.archiveName = config.archive.root || repoName
-    data.archiveFile = config.archive.dest || `${repoName}.zip`
+    data.archiveFile = config.archive.dest
+      ? config.archive.dest.split('/').pop()
+      : `${repoName}.zip`
   }
 
   if (!isTestEnvironment) {
