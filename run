@@ -70,6 +70,7 @@ main() {
     fi
 
     # Clean up slug: alphanumeric and dash only
+    PROJECT_SLUG=${PROJECT_SLUG//@/}
     PROJECT_SLUG=${PROJECT_SLUG//[^0-9A-Za-z\-]/-}
 
     echo -e "\n..Using project slug \"$PROJECT_SLUG\"\n"
