@@ -83,22 +83,19 @@ export async function afterRelease() {
   // Upload zip on tangible cloud website
   if (pluginId && productId) {
     try {
-      
-      const localZipPath = data.fileDownload; // Adjust this path as needed
-      
+      const localZipPath = path.join(publishPath, file);
       // Check if the local file exists
       await fs.access(localZipPath);
-      console.log(`Found local zip file: ${localZipPath}`);
-
+      
       // Build the curl command - use local file path, not URL
       const curlCommand = [
         'curl -X POST "https://cloud.tangible.one/api/bitbucket/downloads"',
         `--form files=@"${localZipPath}"`,
         `--form "product_id=${productId}"`,
         `--form "plugin_id=${pluginId}"`,
-        `--form "version=${data.isTag || 'unknown'}"`, // Use actual version from your data
+        `--form "version=${isTag ? gitRefName : 'unknown'}"`,
         `--form "changelog='No changelog provided'"`,
-        `--form "slug=${repoName}"` // Use repository name, not filename
+        `--form "slug=${repoName}"`
       ].join(' \\\n     ');
 
       console.log('Executing curl command:');
