@@ -10,7 +10,7 @@ import { execSync } from 'node:child_process'
  * - Deploy metadata
  */
 export async function afterRelease() {
-  console.log('After release - Test Branch')
+  console.log('After release')
 
   const projectPath = process.cwd()
   const deployMetaPath = path.join(projectPath, 'deploy-meta.json')
