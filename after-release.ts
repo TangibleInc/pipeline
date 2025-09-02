@@ -43,7 +43,7 @@ export async function afterRelease() {
     productId = packageJson.productId || packageJson.cloud?.productId || productId
     
   } catch (error) {
-    console.warn('Could not read package.json:', error.message)
+    console.log('Could not read package.json:', error.message)
   }
 
   const data = {
