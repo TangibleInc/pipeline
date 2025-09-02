@@ -83,27 +83,34 @@ export async function afterRelease() {
   // Upload zip on tangible cloud website
   if (pluginId && productId) {
     try {
-      await fs.access(data.fileDownload);
+      // data.fileDownload is a URL, not a local file - we need the local file path
+      // Assuming you have the local zip file path stored somewhere
+      const localZipPath = path.join('./publish', data.fileDownload); // Adjust this path as needed
+      
+      // Check if the local file exists
+      await fs.access(localZipPath);
+      console.log(`Found local zip file: ${localZipPath}`);
 
-      // Build the curl command
-    const curlCommand = [
-      'curl -X POST "https://cloud.tangible.one/api/bitbucket/downloads"',
-      `--form files=@"${data.fileDownload}"`,
-      `--form "product_id=${productId}"`,
-      `--form "plugin_id=${pluginId}"`,
-      `--form "version=${isTag}"`,
-      `--form "slug=${data.file}"`
-    ].join(' \\\n     ');
+      // Build the curl command - use local file path, not URL
+      const curlCommand = [
+        'curl -X POST "https://cloud.tangible.one/api/bitbucket/downloads"',
+        `--form files=@"${localZipPath}"`,
+        `--form "product_id=${productId}"`,
+        `--form "plugin_id=${pluginId}"`,
+        `--form "version=${data.isTag || 'unknown'}"`, // Use actual version from your data
+        `--form "changelog='No changelog provided'"`,
+        `--form "slug=${repoName}"` // Use repository name, not filename
+      ].join(' \\\n     ');
 
-    console.log('Executing curl command:');
-    console.log(curlCommand);
+      console.log('Executing curl command:');
+      console.log(curlCommand);
 
-    // Execute the curl command
-    const result = execSync(curlCommand, { encoding: 'utf-8' });
-    console.log('Upload successful:', result);
+      // Execute the curl command
+      const result = execSync(curlCommand, { encoding: 'utf-8' });
+      console.log('Upload successful:', result);
 
     } catch (error) {
-      console.log('File not uploaded on cloud'+ error.message)
+      console.log('File not uploaded on cloud: ' + error.message);
     }
   }
 
