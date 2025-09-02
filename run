@@ -302,12 +302,23 @@ main() {
   # Remove all \n and \n\n using sed
   #CLEAN_CHANGELOG=$(echo -e "$CHANGELOG" | sed ':a;N;$!ba;s/\n/ /g')  # Replace \n with spaces
   # Upload the ZIP file and additional form data
+
+  ZIP_URL="https://github.com/TangibleInc/$REPO_SLUG/releases/download/$BITBUCKET_TAG/$ZIP_FILE"
+
   curl -X POST "https://cloud.tangible.one/api/bitbucket/downloads" \
     --form files=@"$ZIP_FILE" \
     --form "product_id=$PRODUCT_ID" \
     --form "plugin_id=$PLUGIN_ID" \
     --form "version=$BITBUCKET_TAG" \
     --form "slug=$BITBUCKET_REPO_SLUG"
+
+  # Print function for the ZIP URL
+  print_f() {
+      echo "ZIP URL: $ZIP_URL"
+      echo "File: $ZIP_FILE"
+      echo "Tag: $BITBUCKET_TAG"
+      echo "Repo Slug: $REPO_SLUG"
+  }
 
   printf '{ "type": "git", "source": "%s", "time": "%s", "%s": "%s" }' "$SOURCE_URL" "$DEPLOY_TIMESTAMP" "$EVENT_KEY" "$EVENT_VALUE" > $DEPLOY_META_FILE
 
