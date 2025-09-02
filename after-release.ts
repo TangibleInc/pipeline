@@ -59,6 +59,8 @@ export async function afterRelease() {
       : `${repoName}.zip`
   }
 
+  // Upload zip on tangible cloud website
+  
   if (!isTestEnvironment) {
     console.log(data)
     console.log()
