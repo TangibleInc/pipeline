@@ -12,6 +12,7 @@ export async function afterRelease() {
 
   const projectPath = process.cwd()
   const deployMetaPath = path.join(projectPath, 'deploy-meta.json')
+  const packageJsonPath = path.join(projectPath, 'package.json')
   const config = (await getProjectConfig({ projectPath })) || {}
 
   const {
@@ -29,10 +30,28 @@ export async function afterRelease() {
 
   console.log(projectPath);
 
+  // Get package.json contents
+  let pluginId: number | null = null
+  let productId: number | null = null
+
+  try {
+    const packageJsonContent = await fs.readFile(packageJsonPath, 'utf8')
+    const packageJson = JSON.parse(packageJsonContent)
+
+    console.log(packageJson);
+    
+    // Get plugin_id and product_id from package.json
+    //pluginId = packageJson.plugin_id || packageJson.tangible?.plugin_id || pluginId
+    //productId = packageJson.product_id || packageJson.tangible?.product_id || productId
+    
+  } catch (error) {
+    console.warn('Could not read package.json:', error.message)
+  }
+
   const data = {
     type: 'git',
-    pluginId:53,
-    productId:82,
+    pluginId:pluginId,
+    productId:productId,
     event: isCommit ? 'commit' : eventType,
     source: repoUrl,
     time: new Date().toISOString().slice(0, 19).replace('T', ' '),
