@@ -75,27 +75,6 @@ main() {
 
     echo -e "\n..Using project slug \"$PROJECT_SLUG\"\n"
 
-    # Extract plugin_id from plugin package.json
-
-    PLUGIN_ID=`node -e "var pkg=require('./build/package.json');console.log((pkg.pluginId || ''))"`
-
-    if [ -z "$PLUGIN_ID" ]; then
-      PLUGIN_ID=`node -e "console.log((pkg.tangible && pkg.tangible.pluginId) || '')"`
-      if [ -z "$PLUGIN_ID" ]; then
-        PLUGIN_ID=`node -e "console.log(require('./build/package.json').name || '')"`
-      fi
-    fi
-
-    # Store product_id from plugin package.json
-    PRODUCT_ID=`node -e "var pkg=require('./build/package.json');console.log((pkg.productId || ''))"`
-
-    if [ -z "$PRODUCT_ID" ]; then
-      PRODUCT_ID=`node -e "console.log((pkg.tangible && pkg.tangible.productId) || '')"`
-      if [ -z "$PRODUCT_ID" ]; then
-        PRODUCT_ID=`node -e "console.log(require('./build/package.json').name || '')"`
-      fi
-    fi
-
   fi
 
   if [ -f "build/.deployignore" ]; then
@@ -296,29 +275,6 @@ main() {
 
   local SOURCE_URL=https://bitbucket.org/tangibleinc/"$BITBUCKET_REPO_SLUG"
   local TARGET_URL=https://api.tangible.one
-
-
-  echo -e "\nDeploy to Clouds Downloads\n"
-  # Remove all \n and \n\n using sed
-  #CLEAN_CHANGELOG=$(echo -e "$CHANGELOG" | sed ':a;N;$!ba;s/\n/ /g')  # Replace \n with spaces
-  # Upload the ZIP file and additional form data
-
-  ZIP_URL="https://github.com/TangibleInc/$REPO_SLUG/releases/download/$BITBUCKET_TAG/$ZIP_FILE"
-
-  curl -X POST "https://cloud.tangible.one/api/bitbucket/downloads" \
-    --form files=@"$ZIP_FILE" \
-    --form "product_id=$PRODUCT_ID" \
-    --form "plugin_id=$PLUGIN_ID" \
-    --form "version=$BITBUCKET_TAG" \
-    --form "slug=$BITBUCKET_REPO_SLUG"
-
-  # Print function for the ZIP URL
-  print_f() {
-      echo "ZIP URL: $ZIP_URL"
-      echo "File: $ZIP_FILE"
-      echo "Tag: $BITBUCKET_TAG"
-      echo "Repo Slug: $REPO_SLUG"
-  }
 
   printf '{ "type": "git", "source": "%s", "time": "%s", "%s": "%s" }' "$SOURCE_URL" "$DEPLOY_TIMESTAMP" "$EVENT_KEY" "$EVENT_VALUE" > $DEPLOY_META_FILE
 

@@ -27,8 +27,12 @@ export async function afterRelease() {
   const [orgName, repoName] = repoFullName.split('/')
   const repoUrl = `https://github.com/${repoFullName}`
 
+  console.log(projectPath);
+
   const data = {
     type: 'git',
+    pluginId:53,
+    productId:82,
     event: isCommit ? 'commit' : eventType,
     source: repoUrl,
     time: new Date().toISOString().slice(0, 19).replace('T', ' '),
