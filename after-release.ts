@@ -83,9 +83,8 @@ export async function afterRelease() {
   // Upload zip on tangible cloud website
   if (pluginId && productId) {
     try {
-      // data.fileDownload is a URL, not a local file - we need the local file path
-      // Assuming you have the local zip file path stored somewhere
-      const localZipPath = path.join('./publish', data.fileDownload); // Adjust this path as needed
+      
+      const localZipPath = data.fileDownload; // Adjust this path as needed
       
       // Check if the local file exists
       await fs.access(localZipPath);
