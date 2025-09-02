@@ -8,7 +8,7 @@ import { getEventMeta, isTestEnvironment, getProjectConfig } from './common'
  * - Deploy metadata
  */
 export async function afterRelease() {
-  console.log('After release')
+  console.log('After release - Test Branch')
 
   const projectPath = process.cwd()
   const deployMetaPath = path.join(projectPath, 'deploy-meta.json')
@@ -60,7 +60,7 @@ export async function afterRelease() {
   }
 
   // Upload zip on tangible cloud website
-  
+
   if (!isTestEnvironment) {
     console.log(data)
     console.log()
