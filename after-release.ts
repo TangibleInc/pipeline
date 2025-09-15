@@ -40,8 +40,8 @@ export async function afterRelease() {
     const packageJson = JSON.parse(packageJsonContent)
 
     // Set ids
-    pluginId = packageJson?.tangible?.pluginId
-    productId = packageJson?.tangible?.productId
+    pluginId = packageJson?.cloud?.pluginId
+    productId = packageJson?.cloud?.productId
     
   } catch (error) {
     console.log('Could not read package.json:', error.message)
@@ -51,7 +51,7 @@ export async function afterRelease() {
   let changelog = 'No changelog provided'
 
   try {
-    //changelog = await fs.readFile(readmePath, 'utf8')
+    changelog = await fs.readFile(readmePath, 'utf8')
   } catch (error) {
     console.log('Could not read changelog (readme.txt):', error.message)
   }
