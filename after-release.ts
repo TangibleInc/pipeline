@@ -48,8 +48,8 @@ export async function afterRelease() {
 
   const data = {
     type: 'git',
-    pluginId:pluginId,
-    productId:productId,
+    pluginId,
+    productId,
     event: isCommit ? 'commit' : eventType,
     source: repoUrl,
     time: new Date().toISOString().slice(0, 19).replace('T', ' '),
