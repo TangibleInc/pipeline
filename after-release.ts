@@ -31,8 +31,8 @@ export async function afterRelease() {
   const repoUrl = `https://github.com/${repoFullName}`
 
   // Get package.json contents
-  let pluginId: number | null = null
-  let productId: number | null = null
+  let pluginId: number
+  let productId: number
 
   try {
     const packageJsonContent = await fs.readFile(packageJsonPath, 'utf8')
