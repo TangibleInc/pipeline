@@ -51,7 +51,7 @@ export async function afterRelease() {
   let changelog = 'No changelog provided'
 
   try {
-    changelog = await fs.readFile(readmePath, 'utf8')
+    //changelog = await fs.readFile(readmePath, 'utf8')
   } catch (error) {
     console.log('Could not read changelog (readme.txt):', error.message)
   }
