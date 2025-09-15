@@ -96,9 +96,7 @@ export async function afterRelease() {
       const localZipPath = path.join(publishPath, file);
       // Check if the local file exists
       await fs.access(localZipPath);
-
-      const escapedChangelog = changelog.replace(/"/g, '\\"') .replace(/\n/g, '\\n');
-        
+      
       // Build the curl command - use local file path, not URL
       const curlCommand = [
         'curl -X POST "https://cloud.tangible.one/api/bitbucket/downloads"',
@@ -106,7 +104,7 @@ export async function afterRelease() {
         `--form "product_id=${productId}"`,
         `--form "plugin_id=${pluginId}"`,
         `--form "version=${isTag ? gitRefName : 'unknown'}"`,
-        `--form "changelog=${escapedChangelog}"`,
+        `--form "changelog=${changelog.replace(/"/g, '\\"')}"`,
         `--form "slug=${repoName}"`
       ].join(' \\\n     ');
 
