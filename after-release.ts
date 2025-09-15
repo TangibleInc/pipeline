@@ -15,6 +15,7 @@ export async function afterRelease() {
   const projectPath = process.cwd()
   const deployMetaPath = path.join(projectPath, 'deploy-meta.json')
   const packageJsonPath = path.join(projectPath, 'package.json')
+  const readmePath = path.join(projectPath, 'readme.txt')
   const config = (await getProjectConfig({ projectPath })) || {}
 
   const {
@@ -46,6 +47,15 @@ export async function afterRelease() {
     console.log('Could not read package.json:', error.message)
   }
 
+  // Try reading changelog from readme.txt
+  let changelog = 'No changelog provided'
+
+  try {
+    changelog = await fs.readFile(readmePath, 'utf8')
+  } catch (error) {
+    console.log('Could not read changelog (readme.txt):', error.message)
+  }
+  
   const data = {
     type: 'git',
     pluginId,
@@ -94,7 +104,7 @@ export async function afterRelease() {
         `--form "product_id=${productId}"`,
         `--form "plugin_id=${pluginId}"`,
         `--form "version=${isTag ? gitRefName : 'unknown'}"`,
-        `--form "changelog='No changelog provided'"`,
+        `--form "changelog=${changelog.replace(/"/g, '\\"')}"`,
         `--form "slug=${repoName}"`
       ].join(' \\\n     ');
 
