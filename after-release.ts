@@ -39,8 +39,8 @@ export async function afterRelease() {
     const packageJson = JSON.parse(packageJsonContent)
 
     // Set ids
-    pluginId = packageJson.pluginId || packageJson.cloud?.pluginId || pluginId
-    productId = packageJson.productId || packageJson.cloud?.productId || productId
+    pluginId = packageJson?.tangible?.pluginId
+    productId = packageJson?.tangible?.productId
     
   } catch (error) {
     console.log('Could not read package.json:', error.message)
