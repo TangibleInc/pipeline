@@ -51,7 +51,36 @@ export async function afterRelease() {
   let changelog = 'No changelog provided'
 
   try {
-    changelog = await fs.readFile(readmePath, 'utf8')
+    const sectionHeader = '== Changelog =='
+    const lines = (await fs.readFile('./readme.txt', 'utf8'))
+      .split(sectionHeader)
+      .pop()
+      .split('\n')
+
+    const changeList: string[] = []
+    let captureLine = false
+
+    for (const line of lines) {
+      // Version header
+      if (line.startsWith('= ')) {
+        if (captureLine) {
+          // Skip previous versions
+          break
+        }
+        // Start gathering change list
+        captureLine = true
+      } else if (line.startsWith('== ')) {
+        // Next section
+        break
+      }
+      if (captureLine) {
+        changeList.push(line)
+      }
+    }
+
+    if (changeList.length) {
+      changelog = changeList.join('\n')
+    }
   } catch (error) {
     console.log('Could not read changelog (readme.txt):', error.message)
   }
