@@ -24,35 +24,6 @@ The goal is to seamlessly upgrade from the previous [Bitbucket Pipeline v2](http
 - [x] Create change log from Git commit messages
 - [x] Deploy metadata to an event API
 
-## Bitbucket Pipeline
-
-Create a file named `bitbucket-pipelines.yml`.
-
-```yaml
-# See https://github.com/tangibleinc/pipeline
-image: php:8.1-fpm
-pipelines:
-  # On every commit
-  default:
-    - step:
-        script:
-          - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
-  # On every version tag
-  tags:
-    "*":
-      - step:
-          script:
-            - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
-```
-
-For existing projects, change `v2` to `v3` in the URL of the Bitbucket pipeline script.
-
-Alternatively use the GitHub URL.
-
-```
-https://raw.githubusercontent.com/tangibleinc/pipeline/main/run
-```
-
 ## GitHub Actions
 
 Status: Work in progress
@@ -122,4 +93,54 @@ Use [GitHub Action `ssh-agent`](https://github.com/webfactory/ssh-agent) to pass
 - uses: webfactory/ssh-agent@v0.9.0
   with:
       ssh-private-key: ${{ secrets.TANGIBLE_PIPELINE_SSH_KEY }}
+```
+
+- Reference: [`lifter-elements/.github/workflows/release.yml`](https://github.com/TangibleInc/lifter-elements/blob/de3cb98563178e4fa4b8cca94f601c433da42157/.github/workflows/release.yml)
+
+### Composer dependencies
+
+To install external Composer dependencies, add the following step after "Install dependencies".
+
+```sh
+# Install external deps, generate autoload and lock file
+# Configure workspace as safe for Git to solve: https://github.com/composer/composer/issues/12221
+- name: Install PHP dependencies (Composer)
+  uses: php-actions/composer@v6
+  with:
+    php_version: '8.2'
+  run: |
+    git config --global --add safe.directory /app
+    composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+```
+
+- Reference: https://github.com/TangibleInc/roller/issues/12
+
+
+## Bitbucket Pipeline
+
+Create a file named `bitbucket-pipelines.yml`.
+
+```yaml
+# See https://github.com/tangibleinc/pipeline
+image: php:8.1-fpm
+pipelines:
+  # On every commit
+  default:
+    - step:
+        script:
+          - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
+  # On every version tag
+  tags:
+    "*":
+      - step:
+          script:
+            - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
+```
+
+For existing projects, change `v2` to `v3` in the URL of the Bitbucket pipeline script.
+
+Alternatively use the GitHub URL.
+
+```
+https://raw.githubusercontent.com/tangibleinc/pipeline/main/run
 ```
