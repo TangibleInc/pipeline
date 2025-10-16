@@ -117,8 +117,6 @@ To install external Composer dependencies, add the following step *before* "Inst
     composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 ```
 
-- Reference: https://github.com/TangibleInc/roller/issues/12
-
 
 ## Bitbucket Pipeline
 
