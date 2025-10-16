@@ -2,6 +2,8 @@ import { Glob } from 'bun'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import { getEventMeta, isTestEnvironment, getProjectConfig } from './common'
+import { execSync } from 'node:child_process'
+
 /**
  * After release
  *
@@ -12,6 +14,8 @@ export async function afterRelease() {
 
   const projectPath = process.cwd()
   const deployMetaPath = path.join(projectPath, 'deploy-meta.json')
+  const packageJsonPath = path.join(projectPath, 'package.json')
+  const readmePath = path.join(projectPath, 'readme.txt')
   const config = (await getProjectConfig({ projectPath })) || {}
 
   const {
@@ -27,8 +31,64 @@ export async function afterRelease() {
   const [orgName, repoName] = repoFullName.split('/')
   const repoUrl = `https://github.com/${repoFullName}`
 
+  // Get package.json contents
+  let pluginId: number
+  let productId: number
+
+  try {
+    const packageJsonContent = await fs.readFile(packageJsonPath, 'utf8')
+    const packageJson = JSON.parse(packageJsonContent)
+
+    // Set ids
+    pluginId = packageJson?.tangible?.pluginId
+    productId = packageJson?.tangible?.productId
+    
+  } catch (error) {
+    console.log('Could not read package.json:', error.message)
+  }
+
+  // Try reading changelog from readme.txt
+  let changelog = 'No changelog provided'
+
+  try {
+    const sectionHeader = '== Changelog =='
+    const lines = (await fs.readFile('./readme.txt', 'utf8'))
+      .split(sectionHeader)
+      .pop()
+      .split('\n')
+
+    const changeList: string[] = []
+    let captureLine = false
+
+    for (const line of lines) {
+      // Version header
+      if (line.startsWith('= ')) {
+        if (captureLine) {
+          // Skip previous versions
+          break
+        }
+        // Start gathering change list
+        captureLine = true
+      } else if (line.startsWith('== ')) {
+        // Next section
+        break
+      }
+      if (captureLine) {
+        changeList.push(line)
+      }
+    }
+
+    if (changeList.length) {
+      changelog = changeList.join('\n')
+    }
+  } catch (error) {
+    console.log('Could not read changelog (readme.txt):', error.message)
+  }
+  
   const data = {
     type: 'git',
+    pluginId,
+    productId,
     event: isCommit ? 'commit' : eventType,
     source: repoUrl,
     time: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -57,6 +117,36 @@ export async function afterRelease() {
     data.archiveFile = config.archive.dest
       ? config.archive.dest.split('/').pop()
       : `${repoName}.zip`
+  }
+
+  // Upload zip on tangible cloud website
+  if (pluginId && productId) {
+    try {
+      const localZipPath = path.join(publishPath, file);
+      // Check if the local file exists
+      await fs.access(localZipPath);
+      
+      // Build the curl command - use local file path, not URL
+      const curlCommand = [
+        'curl -X POST "https://cloud.tangible.one/api/bitbucket/downloads"',
+        `--form files=@"${localZipPath}"`,
+        `--form "product_id=${productId}"`,
+        `--form "plugin_id=${pluginId}"`,
+        `--form "version=${isTag ? gitRefName : 'unknown'}"`,
+        `--form "changelog=${changelog.replace(/"/g, '\\"')}"`,
+        `--form "slug=${repoName}"`
+      ].join(' \\\n     ');
+
+      console.log('Executing curl command:');
+      console.log(curlCommand);
+
+      // Execute the curl command
+      const result = execSync(curlCommand, { encoding: 'utf-8' });
+      console.log('Upload successful:', result);
+
+    } catch (error) {
+      console.log('File not uploaded on cloud: ' + error.message);
+    }
   }
 
   if (!isTestEnvironment) {
