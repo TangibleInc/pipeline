@@ -97,14 +97,18 @@ Use [GitHub Action `ssh-agent`](https://github.com/webfactory/ssh-agent) to pass
 
 - Reference: [`lifter-elements/.github/workflows/release.yml`](https://github.com/TangibleInc/lifter-elements/blob/de3cb98563178e4fa4b8cca94f601c433da42157/.github/workflows/release.yml)
 
-### Composer dependencies
+### Composer
 
-To install external Composer dependencies, add the following step after "Install dependencies".
+To install external Composer dependencies, add the following step *before* "Install dependencies".
 
 ```sh
-# Install external deps, generate autoload and lock file
-# Configure workspace as safe for Git to solve: https://github.com/composer/composer/issues/12221
-- name: Install PHP dependencies (Composer)
+#
+# Install external Composer dependencies
+#
+# - Configure workspace as safe for Git, to solve: https://github.com/composer/composer/issues/12221
+# - Composer install will fail if there are other modules in the `vendor` folder. It must run before NPM/Bun install.
+#
+- name: Setup and run Composer install
   uses: php-actions/composer@v6
   with:
     php_version: '8.2'
