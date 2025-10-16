@@ -1,0 +1,50 @@
+name: Run PHPUnit tests
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: 'Operating system to run tests on'
+        required: false
+        type: 'string'
+        default: 'ubuntu-latest'
+      php:
+        description: 'The version of PHP to use, in the format of X.Y'
+        required: true
+        type: 'string'
+      phpunit-config:
+        description: 'The PHPUnit configuration file to use'
+        required: false
+        type: 'string'
+        default: 'phpunit.xml.dist'
+env:
+  LOCAL_PHP: ${{ inputs.php }}-fpm
+  PHPUNIT_CONFIG: ${{ inputs.phpunit-config }}
+  LC_ALL: en_US.UTF-8
+  LANG:   en_US.UTF-8
+
+jobs:
+  phpunit-tests:
+    name: ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+    # Windows CI runner is slow
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '${{ inputs.php }}'
+          tools: phpunit-polyfills
+          extensions: zip, sqlite3, pdo, pdo_sqlite
+
+      - name: Install Composer dependencies (using composer-ci-matrix-tests.json)
+        run: |
+          composer install --no-interaction --no-progress --optimize-autoloader
+
+      - name: Run PHPUnit tests
+        # Use Composer-installed version of PHPUnit
+        run: vendor/bin/phpunit -c phpunit.xml
