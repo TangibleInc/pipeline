@@ -1,0 +1,50 @@
+name: Deploy to CloudFlare Pages
+
+on:
+  push: {}
+
+permissions:
+  contents: read
+
+jobs:
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Git repository
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install NPM dependencies
+        run: npm ci
+
+      # - name: Build Storybook
+      #   run: npx storybook build --output-dir storybook-static
+
+      # Determines to publish on dev or main
+      - name: Set Cloudflare Pages branch
+        id: cf
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "branch=main" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Publishes to dev if no tag on commit, otherwise publishes to production
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # projectName: storybook-tangible-ui
+          # directory: storybook-static
+          branch: ${{ steps.cf.outputs.branch }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
