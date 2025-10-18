@@ -114,7 +114,6 @@ To install external Composer dependencies, add the following steps *before* NPM/
     php-version: '8.2'
     tools: phpunit-polyfills
 
-# Configure workspace as safe for Git, to solve: https://github.com/composer/composer/issues/12221
 - name: Git safe.directory
   run: |
     git config --global --add safe.directory "$GITHUB_WORKSPACE"
