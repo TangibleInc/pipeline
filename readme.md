@@ -1,6 +1,6 @@
 # Pipeline
 
-Shared build pipeline for plugins on GitHub and Bitbucket.
+Shared build pipeline for Tangible projects on GitHub and Bitbucket.
 
 Source code: https://github.com/tangibleinc/pipeline
 
@@ -99,7 +99,7 @@ Use [GitHub Action `ssh-agent`](https://github.com/webfactory/ssh-agent) to pass
 
 ### Composer
 
-To install external Composer dependencies, add the following step *before* "Install dependencies".
+To install external Composer dependencies, add the following steps *before* NPM/Bun install.
 
 ```sh
 #
@@ -108,17 +108,24 @@ To install external Composer dependencies, add the following step *before* "Inst
 # - Configure workspace as safe for Git, to solve: https://github.com/composer/composer/issues/12221
 # - Composer install will fail if there are other modules in the `vendor` folder. It must run before NPM/Bun install.
 #
-- name: Setup and run Composer install
-  uses: php-actions/composer@v6
+- name: Set up PHP
+  uses: shivammathur/setup-php@v2
   with:
-    php_version: '8.2'
+    php-version: '8.2'
+    tools: phpunit-polyfills
+
+# Configure workspace as safe for Git, to solve: https://github.com/composer/composer/issues/12221
+- name: Git safe.directory
   run: |
-    git config --global --add safe.directory /app
-    composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+    git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+- name: Install Composer dependencies
+  run: |
+    composer install --no-interaction --no-progress --optimize-autoloader
 ```
 
 
-## Bitbucket Pipeline
+## Bitbucket Pipeline (Deprecated)
 
 Create a file named `bitbucket-pipelines.yml`.
 
