@@ -105,8 +105,9 @@ To install external Composer dependencies, add the following steps *before* NPM/
 #
 # Install external Composer dependencies
 #
+# - Composer must be installed directly, not in a container, to prevent issue with permissions.
 # - Configure workspace as safe for Git, to solve: https://github.com/composer/composer/issues/12221
-# - Composer install will fail if there are other modules in the `vendor` folder. It must run before NPM/Bun install.
+# - Composer install will fail if there are other modules in the `vendor` folder. It must run before NPM install.
 #
 - name: Set up PHP
   uses: shivammathur/setup-php@v2
