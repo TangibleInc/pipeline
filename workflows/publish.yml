@@ -2,8 +2,8 @@ name: Publish NPM package
 permissions:
   contents: write
 on:
-  # Release workflow calls this after shared test step succeeds
-  workflow_call: # Can called from other workflows
+  # Release workflow calls this after shared build and test steps succeed
+  workflow_call: # Can be called from other workflows
 jobs:
   publish:
     runs-on: ubuntu-latest
