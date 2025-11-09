@@ -1,6 +1,9 @@
 import path from 'node:path'
+import { exec } from 'node:child_process'
+import { promisify } from 'node:util'
 
 export const isTestEnvironment = process.env.NODE_ENV === 'test'
+const execAsync = promisify(exec)
 
 export type EventMeta = {
   /**
@@ -18,6 +21,10 @@ export type EventMeta = {
    * Branch or tag name
    */
   gitRefName: string
+  /**
+   * Branch name, even in context of "tag" event type
+   */
+  branchName: string
 }
 
 export async function getEventMeta(): Promise<EventMeta> {
@@ -31,26 +38,55 @@ export async function getEventMeta(): Promise<EventMeta> {
     GITHUB_REF_NAME: gitRefName = '',
   } = process.env
 
-  return {
+  /**
+   * Necessary to get branch name using `git` because GitHub Actions does not provide
+   * branch name via env variable on event type `tag`
+   */
+  const branchName = eventType === 'tag'
+    ? await getBranchNameFromTag(gitRefName)
+    : gitRefName
+
+    return {
     repoFullName,
     eventType: eventType as EventMeta['eventType'],
     gitRef,
     gitRefName,
+    branchName,
   }
 }
 
-export async function getProjectConfig({ projectPath }): Promise<{
-  archive?: {
-    /**
-     * Destination zip file name
-     */
-    dest: string
-    /**
-     * Root folder in the archive, usually the plugin name
-     */
-    root?: string
+export async function getBranchNameFromTag(tag: string): Promise<string> {
+  let branchName = tag
+  try {
+    let result = (
+      (await execAsync(`git branch --contains ${tag}`)).stdout || ''
+    )
+      .replace(/^\* /, '')
+      .trim()
+    if (result) {
+      branchName = result
+    }
+  } catch (e) {
+    console.error(`Failed to get branch name from tag ${branchName}`)
   }
-} | undefined> {
+  return branchName
+}
+
+export async function getProjectConfig({ projectPath }): Promise<
+  | {
+      archive?: {
+        /**
+         * Destination zip file name
+         */
+        dest: string
+        /**
+         * Root folder in the archive, usually the plugin name
+         */
+        root?: string
+      }
+    }
+  | undefined
+> {
   const configPath = path.join(projectPath, 'tangible.config.js')
 
   try {

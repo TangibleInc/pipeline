@@ -1,3 +1,4 @@
+# Bitbucket build pipeline - Deprecated
 image: php:8.1
 pipelines:
   default:

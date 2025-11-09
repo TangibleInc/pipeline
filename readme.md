@@ -1,6 +1,6 @@
 # Pipeline
 
-Shared build pipeline for plugins on GitHub and Bitbucket.
+Shared build pipeline for Tangible projects on GitHub and Bitbucket.
 
 Source code: https://github.com/tangibleinc/pipeline
 
@@ -23,35 +23,6 @@ The goal is to seamlessly upgrade from the previous [Bitbucket Pipeline v2](http
 
 - [x] Create change log from Git commit messages
 - [x] Deploy metadata to an event API
-
-## Bitbucket Pipeline
-
-Create a file named `bitbucket-pipelines.yml`.
-
-```yaml
-# See https://github.com/tangibleinc/pipeline
-image: php:8.1-fpm
-pipelines:
-  # On every commit
-  default:
-    - step:
-        script:
-          - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
-  # On every version tag
-  tags:
-    "*":
-      - step:
-          script:
-            - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
-```
-
-For existing projects, change `v2` to `v3` in the URL of the Bitbucket pipeline script.
-
-Alternatively use the GitHub URL.
-
-```
-https://raw.githubusercontent.com/tangibleinc/pipeline/main/run
-```
 
 ## GitHub Actions
 
@@ -122,4 +93,63 @@ Use [GitHub Action `ssh-agent`](https://github.com/webfactory/ssh-agent) to pass
 - uses: webfactory/ssh-agent@v0.9.0
   with:
       ssh-private-key: ${{ secrets.TANGIBLE_PIPELINE_SSH_KEY }}
+```
+
+- Reference: [`lifter-elements/.github/workflows/release.yml`](https://github.com/TangibleInc/lifter-elements/blob/de3cb98563178e4fa4b8cca94f601c433da42157/.github/workflows/release.yml)
+
+### Composer
+
+To install external Composer dependencies, add the following steps *before* NPM/Bun install.
+
+```sh
+#
+# Install external Composer dependencies
+#
+# - Composer must be installed directly, not in a container, to prevent issue with permissions.
+# - Configure workspace as safe for Git, to solve: https://github.com/composer/composer/issues/12221
+# - Composer install will fail if there are other modules in the `vendor` folder. It must run before NPM install.
+#
+- name: Set up PHP
+  uses: shivammathur/setup-php@v2
+  with:
+    php-version: '8.2'
+    tools: phpunit-polyfills
+
+- name: Git safe.directory
+  run: |
+    git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+- name: Install Composer dependencies
+  run: |
+    composer install --no-interaction --no-progress --optimize-autoloader
+```
+
+
+## Bitbucket Pipeline (Deprecated)
+
+Create a file named `bitbucket-pipelines.yml`.
+
+```yaml
+# See https://github.com/tangibleinc/pipeline
+image: php:8.1-fpm
+pipelines:
+  # On every commit
+  default:
+    - step:
+        script:
+          - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
+  # On every version tag
+  tags:
+    "*":
+      - step:
+          script:
+            - curl -sL "https://${BB_AUTH_STRING}@api.bitbucket.org/2.0/repositories/tangibleinc/tangible-pipeline-v3/downloads/run" | bash
+```
+
+For existing projects, change `v2` to `v3` in the URL of the Bitbucket pipeline script.
+
+Alternatively use the GitHub URL.
+
+```
+https://raw.githubusercontent.com/tangibleinc/pipeline/main/run
 ```

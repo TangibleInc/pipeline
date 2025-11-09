@@ -23,6 +23,7 @@ export async function afterRelease() {
     eventType = 'unknown',
     gitRef,
     gitRefName,
+    branchName
   } = await getEventMeta()
 
   const isCommit = eventType === 'branch'
@@ -92,6 +93,7 @@ export async function afterRelease() {
     event: isCommit ? 'commit' : eventType,
     source: repoUrl,
     time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    branchName
   }
 
   // branch or tag
