@@ -64,6 +64,7 @@ export async function getBranchNameFromTag(tag: string): Promise<string> {
         )
       ).stdout || ''
     )
+      .replace(/^origin\//, '')
       .replace(/^\* /, '')
       .trim()
     if (result) {
