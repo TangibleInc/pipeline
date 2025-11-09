@@ -54,14 +54,15 @@ export async function getEventMeta(): Promise<EventMeta> {
   }
 }
 
-export async function getBranchNameFromTag(
-  tag: string,
-  tryAgain = true
-): Promise<string> {
+export async function getBranchNameFromTag(tag: string): Promise<string> {
   let branchName = tag
   try {
     let result = (
-      (await execAsync(`git branch --contains ${tag}`)).stdout || ''
+      (
+        await execAsync(
+          `git branch -r --contains ${tag} | head -n 1 | sed 's/^[[:space:]]*//'`
+        )
+      ).stdout || ''
     )
       .replace(/^\* /, '')
       .trim()
@@ -70,24 +71,6 @@ export async function getBranchNameFromTag(
     }
   } catch (e) {
     console.error(`Failed to get branch name from tag ${branchName}`)
-  }
-
-  /**
-   * If detached HEAD, create a temporary branch and try again
-   */
-  if (branchName.startsWith(`(HEAD detached`) && tryAgain) {
-    try {
-      // Remove any existing
-      await execAsync(`git branch -d tmp`)
-    } catch (e) {
-      // OK
-    }
-    try {
-      await execAsync(`git checkout -b tmp`)
-      branchName = await getBranchNameFromTag(tag, false)
-    } catch (e) {
-      branchName = tag
-    }
   }
 
   return branchName
