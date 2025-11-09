@@ -42,11 +42,10 @@ export async function getEventMeta(): Promise<EventMeta> {
    * Necessary to get branch name using `git` because GitHub Actions does not provide
    * branch name via env variable on event type `tag`
    */
-  const branchName = eventType === 'tag'
-    ? await getBranchNameFromTag(gitRefName)
-    : gitRefName
+  const branchName =
+    eventType === 'tag' ? await getBranchNameFromTag(gitRefName) : gitRefName
 
-    return {
+  return {
     repoFullName,
     eventType: eventType as EventMeta['eventType'],
     gitRef,
@@ -59,9 +58,14 @@ export async function getBranchNameFromTag(tag: string): Promise<string> {
   let branchName = tag
   try {
     let result = (
-      (await execAsync(`git branch --contains ${tag}`)).stdout || ''
+      (
+        await execAsync(
+          `git branch -r --contains ${tag} | head -n 1 | sed 's/^[[:space:]]*//'`
+        )
+      ).stdout || ''
     )
       .replace(/^\* /, '')
+      .replace(/^origin\//, '')
       .trim()
     if (result) {
       branchName = result
@@ -69,6 +73,7 @@ export async function getBranchNameFromTag(tag: string): Promise<string> {
   } catch (e) {
     console.error(`Failed to get branch name from tag ${branchName}`)
   }
+
   return branchName
 }
 
